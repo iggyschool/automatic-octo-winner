@@ -1,0 +1,32 @@
+{
+  "february_data": [
+    {"date": "2026-02-01", "hours_slept": 7.6, "sleep_rating": 4, "consistency": 0.84},
+    {"date": "2026-02-02", "hours_slept": 6.7, "sleep_rating": 3, "consistency": 0.77},
+    {"date": "2026-02-03", "hours_slept": 8.0, "sleep_rating": 5, "consistency": 0.90},
+    {"date": "2026-02-04", "hours_slept": 6.4, "sleep_rating": 2, "consistency": 0.71},
+    {"date": "2026-02-05", "hours_slept": 7.3, "sleep_rating": 4, "consistency": 0.82},
+    {"date": "2026-02-06", "hours_slept": 6.9, "sleep_rating": 3, "consistency": 0.78},
+    {"date": "2026-02-07", "hours_slept": 7.8, "sleep_rating": 5, "consistency": 0.89},
+    {"date": "2026-02-08", "hours_slept": 7.2, "sleep_rating": 4, "consistency": 0.81},
+    {"date": "2026-02-09", "hours_slept": 6.5, "sleep_rating": 3, "consistency": 0.75},
+    {"date": "2026-02-10", "hours_slept": 7.4, "sleep_rating": 4, "consistency": 0.83},
+    {"date": "2026-02-11", "hours_slept": 6.8, "sleep_rating": 3, "consistency": 0.78},
+    {"date": "2026-02-12", "hours_slept": 7.9, "sleep_rating": 5, "consistency": 0.89},
+    {"date": "2026-02-13", "hours_slept": 6.3, "sleep_rating": 2, "consistency": 0.71},
+    {"date": "2026-02-14", "hours_slept": 7.6, "sleep_rating": 4, "consistency": 0.84},
+    {"date": "2026-02-15", "hours_slept": 7.0, "sleep_rating": 3, "consistency": 0.80},
+    {"date": "2026-02-16", "hours_slept": 6.5, "sleep_rating": 3, "consistency": 0.75},
+    {"date": "2026-02-17", "hours_slept": 8.1, "sleep_rating": 5, "consistency": 0.90},
+    {"date": "2026-02-18", "hours_slept": 7.3, "sleep_rating": 4, "consistency": 0.82},
+    {"date": "2026-02-19", "hours_slept": 6.8, "sleep_rating": 3, "consistency": 0.78},
+    {"date": "2026-02-20", "hours_slept": 7.7, "sleep_rating": 4, "consistency": 0.86},
+    {"date": "2026-02-21", "hours_slept": 6.1, "sleep_rating": 2, "consistency": 0.70},
+    {"date": "2026-02-22", "hours_slept": 7.2, "sleep_rating": 4, "consistency": 0.81},
+    {"date": "2026-02-23", "hours_slept": 7.8, "sleep_rating": 5, "consistency": 0.88},
+    {"date": "2026-02-24", "hours_slept": 6.6, "sleep_rating": 3, "consistency": 0.76},
+    {"date": "2026-02-25", "hours_slept": 7.5, "sleep_rating": 4, "consistency": 0.84},
+    {"date": "2026-02-26", "hours_slept": 6.9, "sleep_rating": 3, "consistency": 0.79},
+    {"date": "2026-02-27", "hours_slept": 8.2, "sleep_rating": 5, "consistency": 0.91},
+    {"date": "2026-02-28", "hours_slept": 7.1, "sleep_rating": 4, "consistency": 0.82}
+  ]
+}

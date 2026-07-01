@@ -1,5 +1,5 @@
 <img width="300" alt="snoozr" src="/resources/snoozrwhite.png"/>
-<img width="500" alt="machine learning" src="/resources/machinelearning.gif"/>
+<img width="500" alt="machine learning" src="/resources/ML.png"/>
 
 ### Website: https://iggyschool.github.io/snoozr-ML/
 # Progressive Sleep Tracking with Machine Learning

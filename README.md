@@ -1,7 +1,7 @@
 <img width="300" alt="snoozr" src="/resources/snoozrwhite.png"/>
 <img width="500" alt="machine learning" src="/resources/machinelearning.gif"/>
 
-# snoozr - Progressive Sleep Tracking with Machine Learning
+# Progressive Sleep Tracking with Machine Learning
 
 Snoozr ML is a web-based progressive sleep tracker focused on building strong sleep habits instead of strict schedules. Research shows traditional sleep trackers can cause users to fixate on perfect sleep goals, which may increase stress and insomnia.
 

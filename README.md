@@ -2,8 +2,6 @@
 <img width="500" alt="machine learning" src="/resources/ML.png"/>
 
 ### Website: https://iggyschool.github.io/snoozr-ML/
-### Documentation: https://github.com/iggyschool/snoozr-ML/tree/main/data
-### Presentation: https://github.com/iggyschool/snoozr-ML/tree/main/data
 ### Data: https://github.com/iggyschool/snoozr-ML/tree/main/data
 
 # Progressive Sleep Tracking with Machine Learning

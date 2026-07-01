@@ -12,7 +12,7 @@ This is the final version of Snoozr. It now includes a simple machine learning f
 Snoozr ML uses one straightforward method:
 - **Linear Regression** - calculates a best-fit line from recent sleep durations and uses it to estimate the next expected duration.
 
-<img width="400" alt="linear regression" src="/resources/linearregression.png"/>
+<img width="450" alt="linear regression" src="/resources/linearregression.png"/>
 
 ## Features
 - User Authentication  

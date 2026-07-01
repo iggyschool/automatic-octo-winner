@@ -27,5 +27,3 @@ Snoozr ML uses one straightforward method:
 - Visual Studio Code: https://code.visualstudio.com/  
 - Electron: https://www.electronjs.org/  
 - Sonnet 4.6 / Opus 4.6 (via Claude): https://www.claude.ai/
-
-<img src="https://github.com/user-attachments/assets/98bacec3-5c1c-4d99-bf02-9a66e915fcec" width="200"/>

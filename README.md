@@ -2,6 +2,10 @@
 <img width="500" alt="machine learning" src="/resources/ML.png"/>
 
 ### Website: https://iggyschool.github.io/snoozr-ML/
+### Documentation: https://github.com/iggyschool/snoozr-ML/tree/main/data
+### Presentation: https://github.com/iggyschool/snoozr-ML/tree/main/data
+### Data: https://github.com/iggyschool/snoozr-ML/tree/main/data
+
 # Progressive Sleep Tracking with Machine Learning
 
 Snoozr ML is a web-based progressive sleep tracker focused on building strong sleep habits instead of strict schedules. Research shows traditional sleep trackers can cause users to fixate on perfect sleep goals, which may increase stress and insomnia.

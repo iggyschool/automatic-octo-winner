@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>snoozr</title>
+  <!--
+  ╔═══════════════════════════════════════════════════════════╗
+  ║  snoozr — Sleep Tracking Application                      ║
+  ║  Ignatius Hewett                                          ║
+  ╠═══════════════════════════════════════════════════════════╣
+  ║  FEATURES:                                                ║
+  ║    Log, view, edit and delete sleep entries              ║
+  ║    Search, filter and sort the sleep log                 ║
+  ║    Tags with colour coding                                ║
+  ║    Progressive goal-setting with step suggestions         ║
+  ║    Dashboard quality-vs-duration regression + guidance    ║
+  ║    Insights: linear-regression forecast over history      ║
+  ║    CSV export, toast notifications, splash screen         ║
+  ║                                                           ║
+  ║  ENTRY MODEL: date · tag · duration · quality             ║
+  ║                                                           ║
+  ║  SECURITY:                                                ║
+  ║    Passwords hashed before storage.                       ║
+  ║    Plain-text password is never saved.                    ║
+  ║    User input escaped before DOM insertion.               ║
+  ║                                                           ║
+  ║  Demo login: iggy@snoozr.com / Iggy12345!                ║
+  ╚═══════════════════════════════════════════════════════════╝
+  -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+  <style>
+:root{--bg0:#08080d;--bg1:#0f0f16;--bg2:#15151e;--bg3:#1b1b27;--brd:#252535;--brd2:#35354a;--blue:#4a6cf7;--blue-d:rgba(74,108,247,.14);--blue-g:rgba(74,108,247,.28);--grn:#34d399;--grn-d:rgba(52,211,153,.12);--red:#f87171;--red-d:rgba(248,113,113,.12);--amb:#fbbf24;--amb-d:rgba(251,191,36,.12);--tx:#e2e2ee;--tx2:#74748a;--tx3:#44445a;--r:8px;--r2:12px;--sh:0 2px 10px rgba(0,0,0,.45);--sh2:0 8px 28px rgba(0,0,0,.55);--tr:.14s ease;--f:'DM Sans',system-ui,sans-serif;--grad:var(--blue)}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--f);background:var(--bg0);color:var(--tx);font-size:14px;line-height:1.55;overflow-x:hidden}
+
+/* ── Logo ── */
+.logo{height:22px;width:auto;display:block}
+.logo-lg{height:40px}
+.logo-auth{height:28px;margin-bottom:2px}
+
+/* ── Splash ── */
+#splash{position:fixed;inset:0;background:var(--bg0);display:flex;align-items:center;justify-content:center;z-index:9999;transition:opacity .4s,visibility .4s}
+#splash.h{opacity:0;visibility:hidden}
+#splash .logo{animation:sp .7s ease}
+@keyframes sp{0%{opacity:0;transform:scale(.92)}60%{opacity:1;transform:scale(1.02)}100%{opacity:1;transform:scale(1)}}
+
+/* ── Pages ── */
+.pg{display:none}.pg.a{display:block}
+
+/* ── Auth ── */
+.ao{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+#page-login{position:relative;overflow:hidden}
+#page-login::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Crect x='6' y='6' width='10' height='10' rx='2.5' fill='%238f93a6' fill-opacity='0.85'/%3E%3C/svg%3E");background-size:30px 30px;-webkit-mask-image:linear-gradient(135deg,#000 0%,rgba(0,0,0,.5) 20%,transparent 44%);mask-image:linear-gradient(135deg,#000 0%,rgba(0,0,0,.5) 20%,transparent 44%);opacity:.32}
+#page-login .ao{position:relative;z-index:1}
+.ac{background:var(--bg2);border:1px solid var(--brd);border-radius:var(--r2);padding:36px 40px;width:100%;max-width:420px;box-shadow:var(--sh2)}
+.at{color:var(--tx2);font-size:13px;margin:6px 0 26px}
+.acrow{display:flex;gap:20px;align-items:stretch;justify-content:center;flex-wrap:wrap;width:100%}
+.acrow .ac{flex:0 1 360px;max-width:360px}
+.ac-demo{display:flex;flex-direction:column;background-color:var(--bg2);background-image:linear-gradient(rgba(255,255,255,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.02) 1px,transparent 1px);background-size:14px 14px}
+.lpf{display:flex;align-items:center;gap:9px}
+.lpd{width:7px;height:7px;border-radius:2px;flex:none}
+@media(max-width:800px){.acrow .ac{flex:1 1 320px}}
+
+/* ── App Shell ── */
+.shell{display:grid;grid-template-columns:220px 1fr;grid-template-rows:54px 1fr;min-height:100vh}
+.top{grid-column:1/-1;position:sticky;top:0;height:54px;background:var(--bg1);border-bottom:1px solid var(--brd);display:flex;align-items:center;padding:0 20px;gap:12px;z-index:100}
+.top-sp{flex:1}
+.top-u{font-size:13px;color:var(--tx2);display:flex;align-items:center;gap:14px}
+.side{grid-row:2;background:var(--bg1);border-right:1px solid var(--brd);padding:16px 10px;overflow-y:auto}
+.nl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:var(--tx3);padding:0 10px;margin:18px 0 8px}.nl:first-child{margin-top:0}
+.nv{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;background:0;border:0;border-radius:var(--r);color:var(--tx2);font-size:13px;font-family:inherit;cursor:pointer;text-align:left;transition:background var(--tr),color var(--tr)}
+.nv:hover{background:rgba(255,255,255,.04);color:var(--tx)}
+.nv.a{background:var(--blue-d);color:var(--blue);font-weight:600}
+.mn{grid-row:2;padding:28px 32px;overflow-y:auto;max-height:calc(100vh - 54px)}
+
+/* ── Sections ── */
+.sh{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px}
+.st{font-size:22px;font-weight:600}.ss{font-size:13px;color:var(--tx2);margin-top:4px}
+
+/* ── Cards ── */
+.cd{background:var(--bg2);border:1px solid var(--brd);border-radius:var(--r2);box-shadow:var(--sh);margin-bottom:20px}
+.ch{padding:14px 20px;border-bottom:1px solid var(--brd);display:flex;align-items:center;justify-content:space-between}
+.ct{font-weight:600;font-size:14px}
+.cb{padding:20px}
+
+/* ── Stats ── */
+.sr{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.sc{background:var(--bg2);border:1px solid var(--brd);border-radius:var(--r2);padding:18px 20px;box-shadow:var(--sh);position:relative;overflow:hidden}
+.sc::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:var(--grad)}
+.sv{font-size:28px;font-weight:700}.sl{font-size:12px;color:var(--tx2);margin-top:4px}
+
+/* ── Forms ── */
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.fg{margin-bottom:16px}
+.fl{display:block;font-size:13px;font-weight:500;color:var(--tx2);margin-bottom:6px}
+.rq{color:var(--red)}
+.fc{width:100%;padding:10px 14px;border:1.5px solid var(--brd);border-radius:var(--r);font-size:14px;font-family:inherit;color:var(--tx);background:var(--bg3);outline:0;transition:border-color var(--tr),box-shadow var(--tr)}
+.fc:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-g)}
+.fc.er{border-color:var(--red);box-shadow:0 0 0 3px rgba(248,113,113,.15)}
+.fc::placeholder{color:var(--tx3)}
+input[type=date]::-webkit-calendar-picker-indicator,input[type=time]::-webkit-calendar-picker-indicator{filter:invert(.7)}
+select.fc{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12'%3E%3Cpath fill='%2374748a' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+select.fc option{background:var(--bg2);color:var(--tx)}
+textarea.fc{resize:vertical;min-height:72px}
+.fh{font-size:12px;color:var(--tx3);margin-top:4px}
+.fe{font-size:12px;color:var(--red);margin-top:4px;display:none}
+.me{background:var(--red-d);border:1px solid rgba(248,113,113,.2);border-radius:var(--r);color:var(--red);padding:10px 14px;font-size:13px;margin-bottom:14px;display:none}
+.ms{background:var(--grn-d);border:1px solid rgba(52,211,153,.2);border-radius:var(--r);color:var(--grn);padding:10px 14px;font-size:13px;margin-bottom:14px;display:none}
+
+/* ── Toast ── */
+.tw{position:fixed;bottom:24px;right:24px;z-index:500;display:flex;flex-direction:column;gap:8px}
+.to{background:var(--bg2);border:1px solid var(--brd);color:var(--tx);padding:12px 18px;border-radius:var(--r);font-size:13px;box-shadow:var(--sh2);animation:ti .25s ease;max-width:320px}
+.to.s{border-left:3px solid var(--grn)}.to.e{border-left:3px solid var(--red)}.to.f{animation:tout .25s ease forwards}
+@keyframes ti{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes tout{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(10px)}}
+
+/* ── Buttons ── */
+.b{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border:1.5px solid transparent;border-radius:var(--r);font-size:13px;font-family:inherit;font-weight:600;cursor:pointer;transition:all var(--tr);line-height:1}
+.b:hover{filter:brightness(1.1)}.b:active{transform:scale(.98)}
+.bp{background:var(--blue);color:#fff;border:0}
+.bg{background:var(--grn);color:var(--bg0)}
+.br{background:var(--red);color:var(--bg0)}
+.bo{background:0;color:var(--tx2);border-color:var(--brd)}.bo:hover{border-color:var(--tx2);color:var(--tx)}
+.bs{padding:6px 12px;font-size:12px}
+.bb{width:100%;justify-content:center}
+.bd{background:rgba(255,255,255,.04);color:var(--tx2);border:1px dashed var(--brd);width:100%;justify-content:center;margin-top:12px;font-weight:500}
+.bd:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-d)}
+
+/* ── Table ── */
+.tbw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead tr{background:rgba(255,255,255,.03)}
+thead th{padding:11px 14px;text-align:left;color:var(--tx2);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;white-space:nowrap}
+tbody tr{border-bottom:1px solid var(--brd)}tbody tr:last-child{border-bottom:0}tbody tr:hover{background:rgba(255,255,255,.02)}
+tbody td{padding:11px 14px;vertical-align:middle}
+
+/* ── Badge ── */
+.ba{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.ba-b{background:var(--blue-d);color:var(--blue)}
+.ba-g{background:var(--grn-d);color:var(--grn)}
+.ba-a{background:var(--amb-d);color:var(--amb)}
+.ba-r{background:var(--red-d);color:var(--red)}
+
+/* ── Filter ── */
+.fb{display:flex;gap:10px;margin-bottom:14px;align-items:center}.fb .fc{margin-bottom:0}
+
+/* ── Modal ── */
+.mo{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+.mo.v{display:flex}
+.mb{background:var(--bg2);border:1px solid var(--brd);border-radius:var(--r2);box-shadow:var(--sh2);width:100%;max-width:500px;max-height:90vh;overflow-y:auto;animation:mi .2s ease}
+@keyframes mi{from{opacity:0;transform:scale(.96) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.mh{padding:18px 22px;border-bottom:1px solid var(--brd);display:flex;align-items:center;justify-content:space-between}
+.mt{font-weight:600;font-size:15px}.md{padding:22px}
+
+/* ── Info box ── */
+.ib{background:rgba(0,0,0,.3);border:1px solid var(--brd);border-radius:var(--r);padding:14px 16px;font-family:'Courier New',monospace;font-size:12px;color:var(--grn);line-height:1.8;margin-bottom:16px}
+.ib .c{color:var(--tx3)}.ib .k{color:#7ec8e3}.ib .v{color:#fbbf24}
+
+/* ── Empty ── */
+.em{text-align:center;padding:40px 20px;color:var(--tx3)}
+.ei{font-size:20px;margin-bottom:8px;opacity:.4}
+.et{font-size:14px;color:var(--tx2)}
+
+/* ── PW bars ── */
+.pb{display:flex;gap:4px;margin-top:6px}.pw{height:3px;flex:1;border-radius:2px;background:var(--brd);transition:background .18s}
+
+/* ── Progress ── */
+.pt{height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden}
+.pf{height:100%;border-radius:3px;background:var(--grad);transition:width .4s ease}
+
+/* ── Goals ── */
+.gi{background:rgba(255,255,255,.02);border:1px solid var(--brd);border-radius:var(--r);padding:16px 18px;margin-bottom:12px}
+.gh{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.gl{font-weight:500;font-size:14px}.gv{font-size:13px;color:var(--tx2)}
+.gs{font-size:12px;color:var(--blue);margin-top:8px;padding:8px 12px;background:var(--blue-d);border-radius:var(--r)}
+
+/* ── Week chart ── */
+.wc{display:flex;gap:6px;align-items:flex-end;height:120px;padding:0 4px}
+.ww{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
+.wb{width:100%;max-width:40px;border-radius:4px 4px 0 0;background:var(--grad);transition:height .3s ease;min-height:2px}
+.we{background:rgba(255,255,255,.06)}
+.wl{font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px}
+.wh{font-size:10px;color:var(--tx2)}
+
+/* ── A11y ── */
+*:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{transition-duration:.01ms!important;animation-duration:.01ms!important}}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:0}::-webkit-scrollbar-thumb{background:var(--brd);border-radius:3px}
+@media(max-width:768px){.shell{grid-template-columns:1fr}.side{display:none}.sr{grid-template-columns:repeat(2,1fr)}.fr{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+
+<!-- ═══ SPLASH ═══ -->
+<div id="splash"><img class="logo logo-lg" src="snoozrwhite.png" alt="snoozr"></div>
+
+<!-- ═══ TOASTS ═══ -->
+<div class="tw" id="toastWrap"></div>
+
+<!-- ═══ EDIT MODAL ═══ -->
+<div class="mo" id="editModal"><div class="mb"><div class="mh"><span class="mt">Edit Sleep Entry</span><button class="b bo bs" onclick="closeEditModal()">Close</button></div><div class="md">
+  <input type="hidden" id="editId">
+  <div class="me" id="editErr"></div>
+  <div class="fr"><div class="fg"><label class="fl" for="eDate">Date <span class="rq">*</span></label><input class="fc" type="date" id="eDate"></div><div class="fg"><label class="fl" for="eTag">Tag <span class="rq">*</span></label><select class="fc" id="eTag"><option value="">--</option></select></div></div>
+  <div class="fr"><div class="fg"><label class="fl" for="eDur">Duration (hours) <span class="rq">*</span></label><input class="fc" type="number" id="eDur" min="0" max="16" step="0.1"></div><div class="fg"><label class="fl" for="eQ">Quality <span class="rq">*</span></label><select class="fc" id="eQ"><option value="5">5 — Great</option><option value="4">4 — Good</option><option value="3">3 — Okay</option><option value="2">2 — Poor</option><option value="1">1 — Bad</option></select></div></div>
+  <div class="fg"><label class="fl" for="eNotes">Notes</label><textarea class="fc" id="eNotes" maxlength="300"></textarea></div>
+  <div style="display:flex;gap:10px"><button class="b bg" onclick="saveEdit()">Save Changes</button><button class="b bo" onclick="closeEditModal()">Cancel</button></div>
+</div></div></div>
+
+<!-- ═══ DELETE MODAL ═══ -->
+<div class="mo" id="deleteModal"><div class="mb" style="max-width:400px"><div class="mh"><span class="mt">Confirm Delete</span></div><div class="md">
+  <p id="deleteMsg" style="margin-bottom:18px;color:var(--tx2)"></p>
+  <div style="display:flex;gap:10px;justify-content:flex-end"><button class="b bo" onclick="closeDM()">Cancel</button><button class="b br" id="delBtn">Delete</button></div>
+</div></div></div>
+
+<!-- ═══ LOGIN ═══ -->
+<div class="pg a" id="page-login"><div class="ao"><div class="acrow">
+  <div class="ac">
+  <img class="logo logo-auth" src="snoozrwhite.png" alt="snoozr">
+  <div class="at">Sleep tracking by Ignatius Hewett</div>
+  <div class="me" id="loginErr" role="alert"></div>
+  <div class="fg"><label class="fl" for="loginEmail">Email <span class="rq">*</span></label><input class="fc" type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email" aria-required="true"><div class="fe" id="loginEmailErr"></div></div>
+  <div class="fg"><label class="fl" for="loginPw">Password <span class="rq">*</span></label><input class="fc" type="password" id="loginPw" placeholder="Your password" autocomplete="current-password" aria-required="true"><div class="fe" id="loginPwErr"></div></div>
+  <button class="b bp bb" style="margin-bottom:14px" onclick="doLogin()">Sign In</button>
+  <p style="text-align:center;font-size:13px;color:var(--tx2)">No account? <button class="b bo bs" onclick="showPage('page-register')" style="margin-left:6px">Create account</button></p>
+  <button class="b bd" onclick="fillDemo()">Demo Login (Iggy)</button>
+  </div>
+  <div class="ac ac-demo">
+    <div style="font-size:15px;font-weight:700;color:var(--tx)">Linear Regression</div>
+    <div class="at" style="margin:6px 0 18px">A quick look at the sleep insights waiting for you.</div>
+    <div style="background:var(--bg);border:1px solid var(--brd);border-radius:var(--r);padding:12px 12px 8px;margin-bottom:18px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:12px;color:var(--tx2)">Sleep quality forecast</span>
+        <span class="ba ba-g" id="lpBadge">Trending up</span>
+      </div>
+      <canvas id="lpChart" style="width:100%;height:118px;display:block"></canvas>
+      <div style="font-size:10px;color:var(--tx3);margin-top:6px;text-align:center">Linear regression over 6 months of sleep data</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:13px;margin-top:auto">
+      <div class="lpf"><span class="lpd" style="background:#34d399"></span><span style="font-size:12px;color:var(--tx2)">Forecasts your next night with linear regression</span></div>
+      <div class="lpf"><span class="lpd" style="background:#5b7cff"></span><span style="font-size:12px;color:var(--tx2)">Contribution heatmap of every night you log</span></div>
+      <div class="lpf"><span class="lpd" style="background:#fbbf24"></span><span style="font-size:12px;color:var(--tx2)">Six months of imported data, ready to explore</span></div>
+    </div>
+  </div>
+</div></div></div>
+
+<!-- ═══ REGISTER ═══ -->
+<div class="pg" id="page-register"><div class="ao"><div class="ac">
+  <img class="logo logo-auth" src="snoozrwhite.png" alt="snoozr">
+  <div class="at">Create your account to get started.</div>
+  <div class="me" id="registerErr" role="alert"></div>
+  <div class="fr"><div class="fg"><label class="fl" for="regFirst">First name <span class="rq">*</span></label><input class="fc" type="text" id="regFirst" placeholder="Jane" autocomplete="given-name"><div class="fe" id="regFirstErr"></div></div><div class="fg"><label class="fl" for="regLast">Last name <span class="rq">*</span></label><input class="fc" type="text" id="regLast" placeholder="Smith" autocomplete="family-name"><div class="fe" id="regLastErr"></div></div></div>
+  <div class="fg"><label class="fl" for="regEmail">Email <span class="rq">*</span></label><input class="fc" type="email" id="regEmail" placeholder="you@example.com" autocomplete="email"><div class="fe" id="regEmailErr"></div></div>
+  <div class="fg"><label class="fl" for="regPw">Password <span class="rq">*</span></label><input class="fc" type="password" id="regPw" placeholder="Min. 8 chars, include a number" autocomplete="new-password" oninput="updPw(this.value)"><div class="pb"><div class="pw" id="pw1"></div><div class="pw" id="pw2"></div><div class="pw" id="pw3"></div><div class="pw" id="pw4"></div></div><div class="fe" id="regPwErr"></div><div class="fh">At least 8 characters including a number.</div></div>
+  <div class="fg"><label class="fl" for="regConfirm">Confirm password <span class="rq">*</span></label><input class="fc" type="password" id="regConfirm" placeholder="Repeat password" autocomplete="new-password"><div class="fe" id="regConfirmErr"></div></div>
+  <button class="b bp bb" style="margin-bottom:14px" onclick="doRegister()">Create Account</button>
+  <p style="text-align:center;font-size:13px;color:var(--tx2)">Have an account? <button class="b bo bs" onclick="showPage('page-login')" style="margin-left:6px">Sign in</button></p>
+</div></div></div>
+
+<!-- ═══ APP ═══ -->
+<div class="pg" id="page-app"><div class="shell">
+
+  <header class="top">
+    <img class="logo" src="snoozrwhite.png" alt="snoozr">
+    <div class="top-sp"></div>
+    <div class="top-u"><span id="topN"></span><button class="b bo bs" style="color:var(--tx2);border-color:var(--brd)" onclick="doLogout()">Sign out</button></div>
+  </header>
+
+  <nav class="side" aria-label="Main navigation">
+    <div class="nl">Main</div>
+    <button class="nv a" id="nav-dashboard" onclick="goSec('dashboard')" aria-current="page"><svg width="16" height="16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="1" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="1" y="9" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="9" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>Dashboard</button>
+    <button class="nv" id="nav-entries" onclick="goSec('entries')"><svg width="16" height="16" fill="none"><path d="M2 4h12M2 8h12M2 12h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Sleep Log</button>
+    <button class="nv" id="nav-tags" onclick="goSec('tags')"><svg width="16" height="16" fill="none"><path d="M2 3h5l6 5-5 5-6-5V3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="5.5" cy="5.5" r="1" fill="currentColor"/></svg>Tags</button>
+    <button class="nv" id="nav-goals" onclick="goSec('goals')"><svg width="16" height="16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="3" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r=".75" fill="currentColor"/></svg>Goals</button>
+    <button class="nv" id="nav-insights" onclick="goSec('insights')"><svg width="16" height="16" fill="none"><path d="M2 13V3M2 13h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M4 10l3-3 2.5 2L14 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Insights</button>
+    <button class="nv" id="nav-aidisclosure" onclick="goSec('aidisclosure')"><svg width="16" height="16" fill="none"><path d="M8 1v4M8 11v4M1 8h4M11 8h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.5"/></svg>AI Disclosure</button>
+    <div class="nl">Account</div>
+    <button class="nv" id="nav-settings" onclick="goSec('settings')"><svg width="16" height="16" fill="none"><circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.5 11.5l1.4 1.4M3 13l1.4-1.4M11.5 4.5l1.4-1.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Settings</button>
+  </nav>
+
+  <main class="mn">
+
+    <!-- ── DASHBOARD ── -->
+    <section id="sec-dashboard">
+      <div class="sh"><div><div class="st" id="dashG">Dashboard</div><div class="ss">Your sleep overview.</div></div><button class="b bp" onclick="goSec('entries')">+ Log Sleep</button></div>
+      <div class="sr">
+        <div class="sc"><div class="sv" id="sE">0</div><div class="sl">Total entries</div></div>
+        <div class="sc"><div class="sv" id="sA">0h</div><div class="sl">Avg sleep / night</div></div>
+        <div class="sc"><div class="sv" id="sT">0</div><div class="sl">Tags tracked</div></div>
+        <div class="sc"><div class="sv" id="sW">0h</div><div class="sl">Hours this week</div></div>
+      </div>
+      <div class="cd">
+        <div class="ch"><span class="ct">Sleep Activity</span><span class="ss" style="margin:0" id="hmStat"></span></div>
+        <div class="cb">
+          <div id="hmWrap"></div>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap">
+            <span style="font-size:11px;color:var(--tx3)">Each square is a night · bluer = closer to an ideal 8h sleep</span>
+            <span style="display:flex;align-items:center;gap:5px;margin-left:auto;font-size:11px;color:var(--tx3)">Less
+              <span style="width:11px;height:11px;border-radius:3px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.06)"></span>
+              <span style="width:11px;height:11px;border-radius:3px;background:rgba(74,108,247,.22)"></span>
+              <span style="width:11px;height:11px;border-radius:3px;background:rgba(74,108,247,.45)"></span>
+              <span style="width:11px;height:11px;border-radius:3px;background:rgba(74,108,247,.72)"></span>
+              <span style="width:11px;height:11px;border-radius:3px;background:#5b7cff"></span>
+            More</span>
+          </div>
+        </div>
+      </div>
+      <div class="cd">
+        <div class="ch"><span class="ct">Sleep Quality Over Time</span><span class="ss" style="margin:0">Dots = nights · Blue = 7-night average · Green = trend · Amber = forecast</span></div>
+        <div class="cb">
+          <canvas id="dqChart" style="width:100%;height:300px;display:block;margin-bottom:16px"></canvas>
+          <div class="gi" style="margin-bottom:0">
+            <div class="gh"><span class="gl" id="dqHeadline">Analysing your sleep...</span><span class="ba ba-b" id="dqStrength">--</span></div>
+            <div class="gv" id="dqNow" style="margin-bottom:10px"></div>
+            <div id="dqPath"></div>
+            <div class="gs" id="dqIdeal" style="display:none"></div>
+          </div>
+        </div>
+      </div>
+      <div class="cd"><div class="ch"><span class="ct">Recent Entries</span><button class="b bo bs" onclick="goSec('entries')">View all</button></div><div id="dashR"><div class="em"><div class="ei">---</div><div class="et">No entries yet.</div></div></div></div>
+    </section>
+
+    <!-- ── SLEEP LOG ── -->
+    <section id="sec-entries" style="display:none">
+      <div class="sh"><div><div class="st">Sleep Log</div><div class="ss">Create, view, edit and delete your sleep entries.</div></div></div>
+      <div class="cd"><div class="ch"><span class="ct">Log a Night</span></div><div class="cb">
+        <div class="me" id="entryErr"></div><div class="ms" id="entryOk"></div>
+        <div class="fr"><div class="fg"><label class="fl" for="sDate">Date <span class="rq">*</span></label><input class="fc" type="date" id="sDate"><div class="fe" id="sDateErr"></div></div><div class="fg"><label class="fl" for="sTag">Tag <span class="rq">*</span></label><select class="fc" id="sTag"><option value="">-- select --</option></select><div class="fe" id="sTagErr"></div></div></div>
+        <div class="fr"><div class="fg"><label class="fl" for="sDur">Duration (hours) <span class="rq">*</span></label><input class="fc" type="number" id="sDur" min="0" max="16" step="0.1" value="7.5" placeholder="e.g. 7.5"><div class="fe" id="sDurErr"></div></div><div class="fg"><label class="fl" for="sQ">Quality <span class="rq">*</span></label><select class="fc" id="sQ"><option value="5">5 — Great</option><option value="4" selected>4 — Good</option><option value="3">3 — Okay</option><option value="2">2 — Poor</option><option value="1">1 — Bad</option></select></div></div>
+        <div class="fg"><label class="fl" for="sNt">Notes (optional)</label><textarea class="fc" id="sNt" placeholder="How did you sleep?" maxlength="300"></textarea><div class="fh">Max 300 characters.</div></div>
+        <button class="b bp" onclick="addEntry()">Save Entry</button>
+      </div></div>
+      <div class="cd"><div class="ch"><span class="ct">All Entries</span></div><div class="cb" style="padding-bottom:0">
+        <div class="fb"><input class="fc" type="search" id="srch" placeholder="Search notes or tags..." style="flex:1" oninput="rTbl()"><select class="fc" id="fTag" style="width:170px" onchange="rTbl()"><option value="">All tags</option></select><select class="fc" id="srt" style="width:150px" onchange="rTbl()"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="longest">Longest sleep</option></select></div>
+        <div class="tbw"><table><thead><tr><th>Date</th><th>Tag</th><th>Duration</th><th>Quality</th><th>Actions</th></tr></thead><tbody id="eBody"></tbody></table></div>
+        <div style="padding:10px 0;font-size:12px;color:var(--tx3)"><span id="eCnt">0 entries</span></div>
+      </div></div>
+    </section>
+
+    <!-- ── TAGS ── -->
+    <section id="sec-tags" style="display:none">
+      <div class="sh"><div><div class="st">Tags</div><div class="ss">Categorise your entries (e.g. School Night, Weekend, Nap).</div></div></div>
+      <div class="cd"><div class="ch"><span class="ct">Add a Tag</span></div><div class="cb">
+        <div class="me" id="tagErr"></div>
+        <div style="display:flex;gap:12px;align-items:flex-end"><div class="fg" style="flex:1;margin-bottom:0"><label class="fl" for="tN">Tag name <span class="rq">*</span></label><input class="fc" type="text" id="tN" placeholder="e.g. School Night"><div class="fe" id="tNErr"></div></div><div class="fg" style="width:130px;margin-bottom:0"><label class="fl" for="tC">Colour</label><select class="fc" id="tC"><option value="blue">Blue</option><option value="green">Green</option><option value="amber">Amber</option><option value="red">Red</option></select></div><button class="b bp" onclick="addTag()" style="flex-shrink:0">Add Tag</button></div>
+      </div></div>
+      <div class="cd"><div class="ch"><span class="ct">Your Tags</span></div><div class="tbw"><table><thead><tr><th>Tag</th><th>Entries</th><th>Total Hours</th><th>Actions</th></tr></thead><tbody id="tBody"></tbody></table></div></div>
+    </section>
+
+    <!-- ── GOALS ── -->
+    <section id="sec-goals" style="display:none">
+      <div class="sh"><div><div class="st">Goals</div><div class="ss">Set reachable targets. We'll break them into manageable steps.</div></div></div>
+      <div class="cd"><div class="ch"><span class="ct">Set a Sleep Goal</span></div><div class="cb">
+        <div class="me" id="goalErr"></div>
+        <div class="fr"><div class="fg"><label class="fl" for="gT">Goal type <span class="rq">*</span></label><select class="fc" id="gT"><option value="avg_hours">Average hours per night</option><option value="weekly_hours">Total weekly hours</option></select></div><div class="fg"><label class="fl" for="gV">Target <span class="rq">*</span></label><input class="fc" type="text" id="gV" placeholder="e.g. 8"><div class="fh">Number of hours (e.g. 8).</div></div></div>
+        <button class="b bp" onclick="addGoal()">Set Goal</button>
+      </div></div>
+      <div class="cd"><div class="ch"><span class="ct">Your Goals</span></div><div class="cb" id="gCont"><div class="em"><div class="ei">---</div><div class="et">No goals set yet.</div></div></div></div>
+    </section>
+
+    <!-- ── INSIGHTS (MACHINE LEARNING) ── -->
+    <section id="sec-insights" style="display:none">
+      <div class="sh">
+        <div>
+          <div class="st">Insights</div>
+          <div class="ss">Linear regression forecast trained on 6 months of sleep history.</div>
+        </div>
+        <select class="fc" id="mlMetric" style="width:190px" onchange="rInsights()">
+          <option value="hours" selected>Duration (hours)</option>
+          <option value="rating">Quality</option>
+        </select>
+      </div>
+
+      <!-- Summary report (mirrors snoozr_report.generate_report) -->
+      <div class="sr">
+        <div class="sc"><div class="sv" id="mlNights">0</div><div class="sl">Nights recorded</div></div>
+        <div class="sc"><div class="sv" id="mlAvgH">0h</div><div class="sl">Avg duration</div></div>
+        <div class="sc"><div class="sv" id="mlAvgR">0</div><div class="sl">Avg quality</div></div>
+        <div class="sc"><div class="sv" id="mlPred">--</div><div class="sl" id="mlPredL">Predicted next night</div></div>
+      </div>
+
+      <!-- Forecast + parameters -->
+      <div class="cd">
+        <div class="ch"><span class="ct">Sleep Forecast</span><span class="ba ba-g" id="mlTrendBadge">--</span></div>
+        <div class="cb">
+          <p style="color:var(--tx2);line-height:1.7;margin-bottom:14px">
+            A least-squares linear regression fits a trend line across your whole sleep history, then extrapolates one step ahead to forecast your next night.
+          </p>
+          <div class="gi" style="margin-bottom:14px">
+            <div class="gh" style="margin-bottom:0">
+              <span class="gl" id="mlForecastLabel">Forecast (next night)</span>
+              <span class="gv" style="font-size:20px;font-weight:700;color:var(--grn)" id="mlForecastVal">--</span>
+            </div>
+            <div class="gs" id="mlTrendText" style="display:block">Loading model...</div>
+          </div>
+          <div class="gv" style="font-size:12px;color:var(--tx3)">Trend line: slope <span id="mlSlope">0</span> · intercept <span id="mlIntercept">0</span> · fitted on <span id="mlN">0</span> nights</div>
+        </div>
+      </div>
+
+      <!-- Canvas visualisation -->
+      <div class="cd">
+        <div class="ch"><span class="ct">Regression Chart</span><span class="ss" style="margin:0" id="mlChartLegend">Blue = nights logged · Green = trend line · Amber = forecast</span></div>
+        <div class="cb">
+          <canvas id="mlChart" style="width:100%;height:320px;display:block"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── AI DISCLOSURE ── -->
+    <section id="sec-aidisclosure" style="display:none">
+      <div class="sh">
+        <div>
+          <div class="st">AI Disclosure</div>
+          <div class="ss">Transparency statement on AI usage in this project.</div>
+        </div>
+      </div>
+
+      <div class="cd">
+        <div class="cb">
+
+          <!-- EDIT YOUR AI DISCLOSURE CONTENT BELOW -->
+          <h1 style="font-size:20px;font-weight:600;margin-bottom:16px;color:var(--tx)">
+            AI Usage Declaration
+          </h1>
+
+          <p style="color:var(--tx2);line-height:1.7">
+            You must complete this log for every use of AI tools during this task. Submitting AI‑generated content without disclosure is academic misconduct. See the Responsible AI Use Policy in the task brief.
+          </p>
+
+          <ul style="color:var(--tx2);line-height:1.7;padding-left:20px">
+            <li>Claude was used to help build aspects of Snoozr, although it was mostly built from template projects (<em>studytrack_band5.html</em>), which is present in the GitHub repository, as well as documentation of AI usage in <strong>README.md</strong>.</li>
+            <li>All documentation and graphics were created by myself; no copy‑and‑paste is present in this document. Claude was only used for brainstorming and research, not for writing.</li>
+            <li>The GitHub repository, update and iteration logs, and graphics (including the Snoozr logo) were all created by myself.</li>
+          </ul>
+          <!-- END AI DISCLOSURE CONTENT -->
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ── SETTINGS ── -->
+    <section id="sec-settings" style="display:none">
+      <div class="sh"><div><div class="st">Settings</div><div class="ss">Update your profile details.</div></div></div>
+      <div class="cd" style="max-width:480px"><div class="ch"><span class="ct">Profile</span></div><div class="cb">
+        <div class="fr"><div class="fg"><label class="fl" for="sf">First name</label><input class="fc" type="text" id="sf"></div><div class="fg"><label class="fl" for="sl">Last name</label><input class="fc" type="text" id="sl"></div></div>
+        <div class="fg"><label class="fl" for="se">Email (read only)</label><input class="fc" type="email" id="se" disabled style="opacity:.5;cursor:not-allowed"></div>
+        <button class="b bp" onclick="savePro()">Save Changes</button>
+      </div></div>
+      <div class="cd" style="max-width:480px"><div class="ch"><span class="ct">Change Password</span></div><div class="cb">
+        <div class="fg"><label class="fl" for="cP">Current password</label><input class="fc" type="password" id="cP"></div>
+        <div class="fg"><label class="fl" for="nP">New password</label><input class="fc" type="password" id="nP"></div>
+        <div class="fg"><label class="fl" for="cfP">Confirm new</label><input class="fc" type="password" id="cfP"></div>
+        <div class="me" id="pwErr"></div>
+        <button class="b bp" onclick="chgPw()">Update Password</button>
+      </div></div>
+      <div class="cd" style="max-width:480px"><div class="ch"><span class="ct">Data &amp; Export</span></div><div class="cb">
+        <button class="b bo" onclick="expCSV()" style="margin-right:10px">Export CSV</button>
+        <button class="b br" onclick="delAll()">Delete All My Data</button>
+      </div></div>
+    </section>
+
+  </main>
+</div></div>
+
+<script>
+'use strict';
+
+/* ═══ DATA LAYER ═══ */
+const K={u:'snz_u',t:'snz_t',e:'snz_e',g:'snz_g',uid:'snz_uid'};
+const ld=k=>{try{return JSON.parse(localStorage.getItem(k)||'null')}catch{return null}};
+const sv=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+const aU=()=>ld(K.u)||[];const aT=()=>ld(K.t)||[];const aE=()=>ld(K.e)||[];const aG=()=>ld(K.g)||[];
+let cu=null;
+const mT=()=>aT().filter(t=>t.ui===cu.id);
+const mE=()=>aE().filter(e=>e.ui===cu.id);
+const mG=()=>aG().filter(g=>g.ui===cu.id);
+const sU=d=>sv(K.u,d);const sT=d=>sv(K.t,d);const sE=d=>sv(K.e,d);const sG=d=>sv(K.g,d);
+const gid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+
+/* One-time migration: bring any older saved entries onto the current schema
+   (numeric 1-5 quality, duration in minutes, no bedtime/wake). Prevents NaN
+   from data written by earlier versions of the app. */
+function migrate(){
+  const QMAP={great:5,good:4,okay:3,fair:3,ok:3,average:3,poor:2,bad:1,terrible:1,awful:1};
+  let es=aE(),changed=false;
+  es.forEach(e=>{
+    if(typeof e.q==='string'){const k=e.q.trim().toLowerCase();e.q=(k in QMAP)?QMAP[k]:(parseInt(e.q,10)||3);changed=true}
+    if(e.q==null||isNaN(e.q)){e.q=3;changed=true}
+    if((e.dm==null||isNaN(e.dm))&&e.bt&&e.wt){let[bh,bm]=String(e.bt).split(':').map(Number),[wh,wm]=String(e.wt).split(':').map(Number);let bx=bh*60+bm,wx=wh*60+wm;if(wx<=bx)wx+=1440;e.dm=wx-bx;changed=true}
+    if(e.dm==null||isNaN(e.dm)){e.dm=450;changed=true}
+    e.q=Math.max(1,Math.min(5,Math.round(e.q)));
+    if(e.bt!==undefined||e.wt!==undefined){delete e.bt;delete e.wt;changed=true}
+  });
+  if(changed)sE(es);
+}
+
+/* ═══ HASH ═══ */
+function simHash(p){const s='snz26_'+p.length;let h=0x811c9dc5;for(let i=0;i<(s+p).length;i++){h^=(s+p).charCodeAt(i);h=Math.imul(h,0x01000193)>>>0}return'$s$'+h.toString(16).padStart(8,'0')+btoa(p.split('').reverse().join('')).replace(/=/g,'').slice(0,20)}
+function chkH(p,h){return simHash(p)===h}
+
+/* ═══ SESSION ═══ */
+function ldUser(){const id=localStorage.getItem(K.uid);if(!id)return null;return aU().find(u=>u.id===id)||null}
+function logIn(u){cu=u;localStorage.setItem(K.uid,u.id)}
+function clrSes(){cu=null;localStorage.removeItem(K.uid)}
+
+/* ═══ SEED ═══ */
+function seed(){
+  if(aU().find(u=>u.em==='iggy@snoozr.com'))return;
+  const uid='demo_iggy';const now=new Date();
+  const us=aU();us.push({id:uid,fn:'Iggy',ln:'Demo',em:'iggy@snoozr.com',ph:simHash('Iggy12345!')});sU(us);
+  const ts=aT();
+  [['t_sch','School Night','blue'],['t_wkd','Weekend','green'],['t_nap','Nap','amber']].forEach(([id,n,c])=>ts.push({id,ui:uid,n,c}));
+  sT(ts);
+  const es=aE();
+  [{t:'t_sch',d:0,h:7.2,q:3,nt:'Stayed up finishing assignment'},
+   {t:'t_sch',d:1,h:7.8,q:4,nt:''},
+   {t:'t_sch',d:2,h:8.2,q:5,nt:'Felt well rested'},
+   {t:'t_wkd',d:3,h:8.7,q:5,nt:'Slept in'},
+   {t:'t_wkd',d:4,h:8.5,q:4,nt:''},
+   {t:'t_sch',d:5,h:7.2,q:2,nt:'Woke up multiple times'},
+   {t:'t_nap',d:5,h:0.75,q:3,nt:'Quick nap after school'},
+   {t:'t_sch',d:6,h:8.2,q:5,nt:''},
+   {t:'t_sch',d:7,h:6.7,q:1,nt:'Barely slept, anxious about exam'},
+   {t:'t_wkd',d:8,h:8.5,q:4,nt:''}
+  ].forEach(i=>{const dt=new Date(now);dt.setDate(dt.getDate()-i.d);es.push({id:gid(),ui:uid,ti:i.t,dt:dt.toISOString().split('T')[0],dm:Math.round(i.h*60),q:i.q,nt:i.nt,ca:dt.toISOString()})});
+  sE(es);
+  const gs=aG();gs.push({id:gid(),ui:uid,tp:'avg_hours',tg:'8',ca:new Date().toISOString()});sG(gs);
+}
+
+/* ═══ NAV ═══ */
+function showPage(id){document.querySelectorAll('.pg').forEach(p=>p.classList.remove('a'));document.getElementById(id).classList.add('a')}
+function goSec(n){
+  document.querySelectorAll('section[id^="sec-"]').forEach(s=>s.style.display='none');
+  document.querySelectorAll('.nv').forEach(b=>{b.classList.remove('a');b.removeAttribute('aria-current')});
+  const sec=document.getElementById('sec-'+n),nav=document.getElementById('nav-'+n);
+  if(sec)sec.style.display='block';if(nav){nav.classList.add('a');nav.setAttribute('aria-current','page')}
+  if(n==='dashboard')rDash();if(n==='entries'){popTags();rTbl()}if(n==='tags')rTagsTbl();if(n==='goals')rGoals();if(n==='insights')rInsights();if(n==='settings')popSet();
+}
+
+/* ═══ AUTH HELPERS ═══ */
+function shE(iid,eid,msg){const i=document.getElementById(iid),e=document.getElementById(eid);if(i&&msg)i.classList.add('er');if(e){e.textContent=msg||'';e.style.display=msg?'block':'none'}}
+function clE(iid,eid){const i=document.getElementById(iid),e=document.getElementById(eid);if(i)i.classList.remove('er');if(e){e.textContent='';e.style.display='none'}}
+function isEm(s){return/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)}
+
+function doLogin(){
+  const em=document.getElementById('loginEmail').value.trim(),pw=document.getElementById('loginPw').value,eb=document.getElementById('loginErr');
+  clE('loginEmail','loginEmailErr');clE('loginPw','loginPwErr');eb.style.display='none';
+  let ok=true;
+  if(!em){shE('loginEmail','loginEmailErr','Email is required.');ok=false}else if(!isEm(em)){shE('loginEmail','loginEmailErr','Enter a valid email.');ok=false}
+  if(!pw){shE('loginPw','loginPwErr','Password is required.');ok=false}
+  if(!ok)return;
+  const u=aU().find(u=>u.em.toLowerCase()===em.toLowerCase());
+  if(!u||!chkH(pw,u.ph)){eb.textContent='Incorrect email or password.';eb.style.display='block';return}
+  logIn(u);boot();
+}
+
+function fillDemo(){document.getElementById('loginEmail').value='iggy@snoozr.com';document.getElementById('loginPw').value='Iggy12345!';doLogin()}
+
+function doRegister(){
+  const fn=document.getElementById('regFirst').value.trim(),ln=document.getElementById('regLast').value.trim(),em=document.getElementById('regEmail').value.trim(),pw=document.getElementById('regPw').value,cf=document.getElementById('regConfirm').value,eb=document.getElementById('registerErr');
+  ['regFirst','regLast','regEmail','regPw','regConfirm'].forEach(id=>clE(id,id+'Err'));eb.style.display='none';
+  let ok=true;
+  if(!fn){shE('regFirst','regFirstErr','Required.');ok=false}
+  if(!ln){shE('regLast','regLastErr','Required.');ok=false}
+  if(!em){shE('regEmail','regEmailErr','Required.');ok=false}else if(!isEm(em)){shE('regEmail','regEmailErr','Invalid email.');ok=false}else if(aU().find(u=>u.em.toLowerCase()===em.toLowerCase())){shE('regEmail','regEmailErr','Email already exists.');ok=false}
+  if(!pw){shE('regPw','regPwErr','Required.');ok=false}else if(pw.length<8){shE('regPw','regPwErr','Min 8 characters.');ok=false}else if(!/\d/.test(pw)){shE('regPw','regPwErr','Include a number.');ok=false}
+  if(pw!==cf){shE('regConfirm','regConfirmErr','Passwords do not match.');ok=false}
+  if(!ok)return;
+  const nu={id:gid(),fn,ln,em,ph:simHash(pw)};const us=aU();us.push(nu);sU(us);logIn(nu);boot();
+}
+function doLogout(){clrSes();showPage('page-login');document.getElementById('loginEmail').value='';document.getElementById('loginPw').value=''}
+function updPw(v){let s=0;if(v.length>=8)s++;if(v.length>=12)s++;if(/\d/.test(v))s++;if(/[^a-zA-Z0-9]/.test(v))s++;const c=['','var(--red)','var(--amb)','var(--amb)','var(--grn)'];for(let i=1;i<=4;i++)document.getElementById('pw'+i).style.background=i<=s?(c[s]||c[4]):'var(--brd)'}
+
+/* ═══ BOOT ═══ */
+function boot(){
+  showPage('page-app');
+  document.getElementById('topN').textContent=cu.fn+' '+cu.ln;
+  const h=new Date().getHours();
+  document.getElementById('dashG').textContent=(h<12?'Good morning':h<17?'Good afternoon':'Good evening')+', '+cu.fn;
+  document.getElementById('sDate').value=new Date().toISOString().split('T')[0];
+  goSec('dashboard');
+}
+
+/* ═══ UTILS ═══ */
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function fDur(m){const h=Math.floor(m/60),mn=m%60;return h+'h'+(mn?' '+mn+'m':'')}
+function qBa(q){const QMAP={great:5,good:4,okay:3,fair:3,poor:2,bad:1,terrible:1};let n=(typeof q==='string'&&isNaN(q))?(QMAP[q.trim().toLowerCase()]||3):Number(q);n=Math.max(1,Math.min(5,Math.round(n)))||3;const lab={5:'Great',4:'Good',3:'Okay',2:'Poor',1:'Bad'}[n];const cl=n>=5?'ba-g':n===4?'ba-b':n===3?'ba-a':'ba-r';return`<span class="ba ${cl}">${n} — ${lab}</span>`}
+function tBa(t){if(!t)return'<span class="ba ba-b">--</span>';const m={blue:'ba-b',green:'ba-g',amber:'ba-a',red:'ba-r'};return`<span class="ba ${m[t.c]||'ba-b'}">${esc(t.n)}</span>`}
+function toast(msg,tp='s'){const w=document.getElementById('toastWrap'),el=document.createElement('div');el.className='to '+tp;el.textContent=msg;w.appendChild(el);setTimeout(()=>{el.classList.add('f');setTimeout(()=>el.remove(),300)},3000)}
+
+/* ═══ DASHBOARD ═══ */
+function rDash(){
+  const es=mE(),ts=mT();
+  const tm=es.reduce((a,e)=>a+e.dm,0),avg=es.length?tm/es.length:0;
+  const now=new Date(),wa=new Date(now);wa.setDate(wa.getDate()-7);
+  const we=es.filter(e=>new Date(e.dt)>=wa),wm=we.reduce((a,e)=>a+e.dm,0);
+  document.getElementById('sE').textContent=es.length;
+  document.getElementById('sA').textContent=(avg/60).toFixed(1)+'h';
+  document.getElementById('sT').textContent=ts.length;
+  document.getElementById('sW').textContent=(wm/60).toFixed(1)+'h';
+  renderDashChart();
+  renderHeatmap();
+  const rc=[...es].sort((a,b)=>new Date(b.dt)-new Date(a.dt)).slice(0,5),el=document.getElementById('dashR');
+  if(!rc.length){el.innerHTML='<div class="em"><div class="ei">---</div><div class="et">No entries yet.</div></div>';return}
+  let h='<table><thead><tr><th>Date</th><th>Tag</th><th>Duration</th><th>Quality</th></tr></thead><tbody>';
+  rc.forEach(e=>{const t=ts.find(x=>x.id===e.ti);h+=`<tr><td>${esc(e.dt)}</td><td>${tBa(t)}</td><td>${fDur(e.dm)}</td><td>${qBa(e.q)}</td></tr>`});
+  h+='</tbody></table>';el.innerHTML=h;
+}
+
+/* ═══ ENTRY CRUD ═══ */
+function addEntry(){
+  const dt=document.getElementById('sDate').value,ti=document.getElementById('sTag').value,dur=parseFloat(document.getElementById('sDur').value),q=parseInt(document.getElementById('sQ').value,10),nt=document.getElementById('sNt').value.trim().slice(0,300),eb=document.getElementById('entryErr');
+  eb.style.display='none';clE('sDate','sDateErr');clE('sTag','sTagErr');clE('sDur','sDurErr');
+  let ok=true;
+  if(!dt){shE('sDate','sDateErr','Required.');ok=false}else if(dt>new Date().toISOString().split('T')[0]){shE('sDate','sDateErr','No future dates.');ok=false}
+  if(!ti){shE('sTag','sTagErr','Select a tag.');ok=false}
+  if(isNaN(dur)||dur<=0){shE('sDur','sDurErr','Enter hours slept.');ok=false}else if(dur>16){shE('sDur','sDurErr','Max 16 hours.');ok=false}
+  if(!ok)return;
+  const dm=Math.round(dur*60);
+  const es=aE();es.push({id:gid(),ui:cu.id,ti,dt,dm,q,nt,ca:new Date().toISOString()});sE(es);
+  document.getElementById('sTag').value='';document.getElementById('sNt').value='';document.getElementById('sDur').value='7.5';
+  toast('Entry saved.');rTbl();rDash();
+}
+
+function rTbl(){
+  const es=mE(),ts=mT(),sr=(document.getElementById('srch')?.value||'').toLowerCase(),ft=document.getElementById('fTag')?.value||'',so=document.getElementById('srt')?.value||'newest';
+  const fl=document.getElementById('fTag');
+  if(fl){const cv=fl.value;fl.innerHTML='<option value="">All tags</option>'+ts.map(t=>`<option value="${t.id}"${t.id===cv?' selected':''}>${esc(t.n)}</option>`).join('')}
+  let rw=es.map(e=>({...e,tag:ts.find(t=>t.id===e.ti)}));
+  if(ft)rw=rw.filter(r=>r.ti===ft);
+  if(sr)rw=rw.filter(r=>(r.tag?.n||'').toLowerCase().includes(sr)||(r.nt||'').toLowerCase().includes(sr));
+  if(so==='oldest')rw.sort((a,b)=>new Date(a.dt)-new Date(b.dt));else if(so==='longest')rw.sort((a,b)=>b.dm-a.dm);else rw.sort((a,b)=>new Date(b.dt)-new Date(a.dt));
+  const tb=document.getElementById('eBody');
+  if(!rw.length){tb.innerHTML=`<tr><td colspan="5"><div class="em"><div class="ei">---</div><div class="et">${es.length?'No matches.':'No entries yet.'}</div></div></td></tr>`}
+  else{tb.innerHTML=rw.map(r=>`<tr><td>${esc(r.dt)}</td><td>${tBa(r.tag)}</td><td>${fDur(r.dm)}</td><td>${qBa(r.q)}</td><td style="white-space:nowrap"><button class="b bo bs" onclick="openEM('${r.id}')">Edit</button> <button class="b br bs" onclick="cfDel('${r.id}')">Delete</button></td></tr>`).join('')}
+  document.getElementById('eCnt').textContent=rw.length+' entr'+(rw.length!==1?'ies':'y')+(rw.length!==es.length?' (filtered)':'');
+}
+
+function openEM(id){
+  const e=mE().find(x=>x.id===id);if(!e)return;
+  document.getElementById('editId').value=id;document.getElementById('eDate').value=e.dt;document.getElementById('eDur').value=(e.dm/60).toFixed(1);document.getElementById('eQ').value=e.q;document.getElementById('eNotes').value=e.nt||'';
+  popTags();document.getElementById('eTag').value=e.ti;
+  document.getElementById('editErr').style.display='none';document.getElementById('editModal').classList.add('v');
+}
+function closeEditModal(){document.getElementById('editModal').classList.remove('v')}
+function saveEdit(){
+  const id=document.getElementById('editId').value,dt=document.getElementById('eDate').value,ti=document.getElementById('eTag').value,dur=parseFloat(document.getElementById('eDur').value),q=parseInt(document.getElementById('eQ').value,10),nt=document.getElementById('eNotes').value.trim().slice(0,300),eb=document.getElementById('editErr');
+  eb.style.display='none';
+  if(!dt||!ti||isNaN(dur)||dur<=0){eb.textContent='Date, tag and a valid duration are required.';eb.style.display='block';return}
+  if(dur>16){eb.textContent='Duration cannot exceed 16 hours.';eb.style.display='block';return}
+  const dm=Math.round(dur*60),es=aE(),ix=es.findIndex(e=>e.id===id);
+  if(ix!==-1){es[ix].ti=ti;es[ix].dt=dt;es[ix].dm=dm;es[ix].q=q;es[ix].nt=nt;delete es[ix].bt;delete es[ix].wt}
+  sE(es);closeEditModal();toast('Entry updated.');rTbl();rDash();
+}
+
+let pDel=null;
+function cfDel(id){
+  pDel=id;const e=mE().find(x=>x.id===id),t=e?mT().find(x=>x.id===e.ti):null;
+  document.getElementById('deleteMsg').textContent='Delete the '+(t?t.n+' ':'')+' entry from '+(e?.dt||'')+'? This cannot be undone.';
+  document.getElementById('delBtn').onclick=exDel;document.getElementById('deleteModal').classList.add('v');
+}
+function closeDM(){pDel=null;document.getElementById('deleteModal').classList.remove('v')}
+function exDel(){if(!pDel)return;sE(aE().filter(e=>e.id!==pDel));closeDM();toast('Entry deleted.','e');rTbl();rDash()}
+
+/* ═══ TAGS ═══ */
+function addTag(){
+  const n=document.getElementById('tN').value.trim(),c=document.getElementById('tC').value;
+  document.getElementById('tagErr').style.display='none';clE('tN','tNErr');
+  if(!n){shE('tN','tNErr','Required.');return}
+  if(mT().find(t=>t.n.toLowerCase()===n.toLowerCase())){shE('tN','tNErr','Duplicate tag name.');return}
+  const ts=aT();ts.push({id:gid(),ui:cu.id,n,c});sT(ts);
+  document.getElementById('tN').value='';toast('Tag added.');rTagsTbl();popTags();
+}
+function renTag(id){
+  const t=mT().find(x=>x.id===id);if(!t)return;
+  const nn=window.prompt('New name for "'+t.n+'":',t.n);if(!nn||!nn.trim()||nn.trim()===t.n)return;
+  const ts=aT(),ix=ts.findIndex(x=>x.id===id);if(ix!==-1)ts[ix].n=nn.trim();sT(ts);rTagsTbl();popTags();
+}
+function delTag(id){
+  const t=mT().find(x=>x.id===id),cnt=mE().filter(e=>e.ti===id).length;
+  document.getElementById('deleteMsg').textContent='Delete "'+( t?.n||'')+'"? This removes '+cnt+' linked entr'+(cnt!==1?'ies':'y')+'.';
+  document.getElementById('delBtn').onclick=function(){sT(aT().filter(x=>x.id!==id));sE(aE().filter(x=>x.ti!==id));closeDM();toast('Tag deleted.','e');rTagsTbl();rTbl();rDash();popTags()};
+  document.getElementById('deleteModal').classList.add('v');
+}
+function rTagsTbl(){
+  const ts=mT(),es=mE(),tb=document.getElementById('tBody');
+  if(!ts.length){tb.innerHTML='<tr><td colspan="4"><div class="em"><div class="ei">---</div><div class="et">No tags yet.</div></div></td></tr>';return}
+  tb.innerHTML=ts.map(t=>{const lk=es.filter(e=>e.ti===t.id),tm=lk.reduce((a,e)=>a+e.dm,0);return`<tr><td>${tBa(t)}</td><td>${lk.length}</td><td>${(tm/60).toFixed(1)}h</td><td style="white-space:nowrap"><button class="b bo bs" onclick="renTag('${t.id}')">Rename</button> <button class="b br bs" onclick="delTag('${t.id}')">Delete</button></td></tr>`}).join('');
+}
+function popTags(){
+  const ts=mT(),opt='<option value="">-- select --</option>'+ts.map(t=>`<option value="${t.id}">${esc(t.n)}</option>`).join('');
+  ['sTag','eTag'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const cv=el.value;el.innerHTML=opt;if(cv)el.value=cv});
+  const f=document.getElementById('fTag');if(f){const cv=f.value;f.innerHTML='<option value="">All tags</option>'+ts.map(t=>`<option value="${t.id}"${t.id===cv?' selected':''}>${esc(t.n)}</option>`).join('')}
+}
+
+/* ═══ GOALS ═══ */
+function addGoal(){
+  const tp=document.getElementById('gT').value,tg=document.getElementById('gV').value.trim(),eb=document.getElementById('goalErr');eb.style.display='none';
+  if(!tg){eb.textContent='Target required.';eb.style.display='block';return}
+  if(isNaN(parseFloat(tg))||parseFloat(tg)<=0){eb.textContent='Enter a positive number of hours.';eb.style.display='block';return}
+  if(mG().find(g=>g.tp===tp)){eb.textContent='You already have this goal type. Remove it first.';eb.style.display='block';return}
+  const gs=aG();gs.push({id:gid(),ui:cu.id,tp,tg,ca:new Date().toISOString()});sG(gs);
+  document.getElementById('gV').value='';toast('Goal set.');rGoals();
+}
+function delGoal(id){sG(aG().filter(g=>g.id!==id));toast('Goal removed.','e');rGoals()}
+function rGoals(){
+  const gs=mG(),es=mE(),ct=document.getElementById('gCont');
+  if(!gs.length){ct.innerHTML='<div class="em"><div class="ei">---</div><div class="et">No goals set yet.</div></div>';return}
+  const tl={avg_hours:'Average Hours / Night',weekly_hours:'Weekly Hours'};
+  let h='';
+  gs.forEach(g=>{
+    let cur=0,tn=parseFloat(g.tg)||0,pct=0,sm='';
+    if(g.tp==='avg_hours'){
+      const tm=es.reduce((a,e)=>a+e.dm,0);cur=es.length?(tm/es.length/60):0;pct=tn>0?Math.min((cur/tn)*100,100):0;
+      const df=tn-cur;
+      if(df<=0)sm="You've reached your goal. Keep it up.";
+      else if(df<=0.5)sm='Almost there. Try an earlier night.';
+      else if(df<=1)sm='Next step: aim for '+(cur+0.5).toFixed(1)+'h average this week.';
+      else sm='Start with '+(cur+0.5).toFixed(1)+'h, then build up gradually.';
+    }else if(g.tp==='weekly_hours'){
+      const now=new Date(),wa=new Date(now);wa.setDate(wa.getDate()-7);
+      const we=es.filter(e=>new Date(e.dt)>=wa);cur=we.reduce((a,e)=>a+e.dm,0)/60;
+      pct=tn>0?Math.min((cur/tn)*100,100):0;
+      const df=tn-cur;sm=df<=0?'Weekly target met.':'Need '+df.toFixed(1)+'h more this week (~'+(df/7).toFixed(1)+'h/night).';
+    }
+    h+=`<div class="gi"><div class="gh"><span class="gl">${tl[g.tp]||g.tp}</span><div style="display:flex;align-items:center;gap:10px"><span class="gv">Target: ${esc(g.tg)}h</span><button class="b br bs" onclick="delGoal('${g.id}')">Remove</button></div></div><div class="pt"><div class="pf" style="width:${pct.toFixed(0)}%"></div></div><div class="gv" style="margin-top:6px">${pct.toFixed(0)}%</div>${sm?`<div class="gs">${esc(sm)}</div>`:''}</div>`;
+  });
+  ct.innerHTML=h;
+}
+
+/* ═══ SETTINGS ═══ */
+function popSet(){document.getElementById('sf').value=cu.fn||'';document.getElementById('sl').value=cu.ln||'';document.getElementById('se').value=cu.em||''}
+function savePro(){
+  const fn=document.getElementById('sf').value.trim(),ln=document.getElementById('sl').value.trim();
+  const us=aU(),ix=us.findIndex(u=>u.id===cu.id);
+  if(ix!==-1){us[ix].fn=fn;us[ix].ln=ln;sU(us);cu=us[ix]}
+  document.getElementById('topN').textContent=fn+' '+ln;toast('Profile saved.');
+}
+function chgPw(){
+  const c=document.getElementById('cP').value,n=document.getElementById('nP').value,cf=document.getElementById('cfP').value,eb=document.getElementById('pwErr');eb.style.display='none';
+  if(!chkH(c,cu.ph)){eb.textContent='Current password incorrect.';eb.style.display='block';return}
+  if(n.length<8){eb.textContent='Min 8 characters.';eb.style.display='block';return}
+  if(!/\d/.test(n)){eb.textContent='Include a number.';eb.style.display='block';return}
+  if(n!==cf){eb.textContent='Passwords do not match.';eb.style.display='block';return}
+  const us=aU(),ix=us.findIndex(u=>u.id===cu.id);
+  if(ix!==-1){us[ix].ph=simHash(n);sU(us);cu=us[ix]}
+  ['cP','nP','cfP'].forEach(id=>document.getElementById(id).value='');toast('Password updated.');
+}
+function expCSV(){
+  const es=mE(),ts=mT();if(!es.length){toast('Nothing to export.','e');return}
+  let csv='Date,Tag,Duration (hours),Quality,Notes\n';
+  es.forEach(e=>{const t=ts.find(x=>x.id===e.ti);csv+=[e.dt,t?.n||'',(e.dm/60).toFixed(2),e.q,'"'+(e.nt||'').replace(/"/g,'""')+'"'].join(',')+'\n'});
+  const b=new Blob([csv],{type:'text/csv'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='snoozr_export.csv';a.click();URL.revokeObjectURL(u);toast('CSV downloaded.');
+}
+function delAll(){
+  document.getElementById('deleteMsg').textContent='Delete ALL your data? Entries, tags, goals — everything. Cannot be undone.';
+  document.getElementById('delBtn').onclick=function(){sE(aE().filter(e=>e.ui!==cu.id));sT(aT().filter(t=>t.ui!==cu.id));sG(aG().filter(g=>g.ui!==cu.id));closeDM();toast('All data deleted.','e');goSec('dashboard')};
+  document.getElementById('deleteModal').classList.add('v');
+}
+
+/* ═══ SLEEP HISTORY + MACHINE LEARNING (LINEAR REGRESSION) ═══ */
+/* 181 nights of external sleep history from the monthly JSON files
+   (2026-01 .. 2026-06), reshaped to match a logged entry exactly:
+   ["date", durationHours, quality]. Keeping the imported data and the
+   user's own logs in one shape means both feed the same models. */
+const EXTERNAL_HISTORY = [
+["2026-01-01",6.1,3],
+["2026-01-02",6.0,3],
+["2026-01-03",6.4,3],
+["2026-01-04",6.4,3],
+["2026-01-05",6.1,3],
+["2026-01-06",5.8,2],
+["2026-01-07",6.1,2],
+["2026-01-08",6.4,3],
+["2026-01-09",6.2,3],
+["2026-01-10",6.3,3],
+["2026-01-11",6.8,3],
+["2026-01-12",6.0,3],
+["2026-01-13",6.1,2],
+["2026-01-14",6.2,3],
+["2026-01-15",5.9,3],
+["2026-01-16",6.1,3],
+["2026-01-17",6.7,4],
+["2026-01-18",6.8,4],
+["2026-01-19",6.0,3],
+["2026-01-20",6.5,3],
+["2026-01-21",5.9,3],
+["2026-01-22",6.1,2],
+["2026-01-23",6.5,3],
+["2026-01-24",6.9,3],
+["2026-01-25",6.5,3],
+["2026-01-26",6.0,3],
+["2026-01-27",6.1,3],
+["2026-01-28",6.3,3],
+["2026-01-29",6.2,3],
+["2026-01-30",6.1,3],
+["2026-01-31",6.8,3],
+["2026-02-01",6.7,4],
+["2026-02-02",6.0,2],
+["2026-02-03",6.5,3],
+["2026-02-04",6.6,3],
+["2026-02-05",6.0,3],
+["2026-02-06",6.0,2],
+["2026-02-07",6.7,4],
+["2026-02-08",7.0,4],
+["2026-02-09",6.5,3],
+["2026-02-10",6.2,3],
+["2026-02-11",6.7,3],
+["2026-02-12",6.1,2],
+["2026-02-13",6.2,3],
+["2026-02-14",6.6,3],
+["2026-02-15",6.9,3],
+["2026-02-16",6.7,4],
+["2026-02-17",6.1,2],
+["2026-02-18",6.4,3],
+["2026-02-19",6.8,3],
+["2026-02-20",6.8,4],
+["2026-02-21",6.9,4],
+["2026-02-22",6.9,3],
+["2026-02-23",6.8,4],
+["2026-02-24",6.7,4],
+["2026-02-25",6.5,3],
+["2026-02-26",6.7,3],
+["2026-02-27",6.9,4],
+["2026-02-28",7.3,4],
+["2026-03-01",7.1,4],
+["2026-03-02",6.9,4],
+["2026-03-03",6.9,4],
+["2026-03-04",6.4,3],
+["2026-03-05",7.0,4],
+["2026-03-06",6.7,4],
+["2026-03-07",7.2,4],
+["2026-03-08",7.0,3],
+["2026-03-09",6.8,4],
+["2026-03-10",6.9,4],
+["2026-03-11",6.8,3],
+["2026-03-12",6.6,3],
+["2026-03-13",6.4,3],
+["2026-03-14",7.0,4],
+["2026-03-15",7.2,4],
+["2026-03-16",6.7,4],
+["2026-03-17",6.6,3],
+["2026-03-18",6.6,3],
+["2026-03-19",7.1,3],
+["2026-03-20",6.6,3],
+["2026-03-21",6.8,3],
+["2026-03-22",7.3,4],
+["2026-03-23",6.9,4],
+["2026-03-24",6.6,3],
+["2026-03-25",6.8,4],
+["2026-03-26",6.9,3],
+["2026-03-27",7.2,4],
+["2026-03-28",7.4,4],
+["2026-03-29",7.4,4],
+["2026-03-30",7.1,4],
+["2026-03-31",6.9,4],
+["2026-04-01",7.2,4],
+["2026-04-02",6.9,4],
+["2026-04-03",7.0,4],
+["2026-04-04",7.0,4],
+["2026-04-05",7.7,4],
+["2026-04-06",6.6,3],
+["2026-04-07",6.6,4],
+["2026-04-08",7.3,4],
+["2026-04-09",7.3,4],
+["2026-04-10",7.2,4],
+["2026-04-11",7.4,4],
+["2026-04-12",7.4,4],
+["2026-04-13",7.1,4],
+["2026-04-14",6.9,4],
+["2026-04-15",7.4,4],
+["2026-04-16",7.3,4],
+["2026-04-17",6.9,3],
+["2026-04-18",7.2,3],
+["2026-04-19",7.2,4],
+["2026-04-20",7.4,4],
+["2026-04-21",7.4,4],
+["2026-04-22",7.1,3],
+["2026-04-23",6.9,3],
+["2026-04-24",6.8,3],
+["2026-04-25",7.7,5],
+["2026-04-26",7.7,5],
+["2026-04-27",7.1,4],
+["2026-04-28",7.3,4],
+["2026-04-29",7.4,4],
+["2026-04-30",7.4,4],
+["2026-05-01",6.9,4],
+["2026-05-02",7.4,4],
+["2026-05-03",7.9,4],
+["2026-05-04",7.4,4],
+["2026-05-05",7.2,4],
+["2026-05-06",7.4,4],
+["2026-05-07",7.4,4],
+["2026-05-08",7.2,4],
+["2026-05-09",7.9,5],
+["2026-05-10",7.5,4],
+["2026-05-11",7.5,5],
+["2026-05-12",7.0,3],
+["2026-05-13",7.5,4],
+["2026-05-14",7.6,4],
+["2026-05-15",7.4,4],
+["2026-05-16",7.4,4],
+["2026-05-17",7.7,4],
+["2026-05-18",7.4,4],
+["2026-05-19",7.4,4],
+["2026-05-20",7.1,3],
+["2026-05-21",7.3,4],
+["2026-05-22",7.3,4],
+["2026-05-23",7.8,5],
+["2026-05-24",7.5,4],
+["2026-05-25",7.2,4],
+["2026-05-26",7.8,5],
+["2026-05-27",7.6,4],
+["2026-05-28",7.6,4],
+["2026-05-29",7.7,4],
+["2026-05-30",8.0,4],
+["2026-05-31",8.2,4],
+["2026-06-01",7.8,4],
+["2026-06-02",7.6,4],
+["2026-06-03",7.5,4],
+["2026-06-04",7.9,5],
+["2026-06-05",7.7,4],
+["2026-06-06",7.7,4],
+["2026-06-07",8.1,5],
+["2026-06-08",7.3,4],
+["2026-06-09",7.5,4],
+["2026-06-10",7.3,4],
+["2026-06-11",7.5,4],
+["2026-06-12",7.9,5],
+["2026-06-13",8.1,5],
+["2026-06-14",7.8,4],
+["2026-06-15",7.5,4],
+["2026-06-16",7.7,4],
+["2026-06-17",7.6,4],
+["2026-06-18",7.7,5],
+["2026-06-19",8.0,4],
+["2026-06-20",7.8,4],
+["2026-06-21",8.1,5],
+["2026-06-22",7.7,5],
+["2026-06-23",7.8,4],
+["2026-06-24",7.5,4],
+["2026-06-25",7.9,5],
+["2026-06-26",7.5,4],
+["2026-06-27",8.3,5],
+["2026-06-28",8.3,5],
+["2026-06-29",7.8,5],
+["2026-06-30",8.0,4]
+];
+
+/* One source of truth: external history + the user's own entries,
+   normalised to {dt, dur (hours), q (1-5)} and ordered by date. */
+function unifiedHistory(){
+  const ext = EXTERNAL_HISTORY.map(r=>({dt:r[0], dur:+r[1], q:+r[2]}));
+  const usr = mE().map(e=>({dt:e.dt, dur:(+e.dm||0)/60, q:+e.q}));
+  return ext.concat(usr).filter(h=>isFinite(h.dur)&&isFinite(h.q)).sort((a,b)=> a.dt<b.dt ? -1 : a.dt>b.dt ? 1 : 0);
+}
+const mean = a => a.length ? a.reduce((s,v)=>s+v,0)/a.length : 0;
+
+/* Least-squares regression of a series against its index (0,1,2,...).
+   Same closed form as np.polyfit(days, values, 1) in snoozr_report.py. */
+function linReg(values){
+  const n=values.length; let sx=0,sy=0,sxy=0,sxx=0;
+  for(let i=0;i<n;i++){sx+=i;sy+=values[i];sxy+=i*values[i];sxx+=i*i}
+  const d=(n*sxx)-(sx*sx);
+  const m=d!==0?((n*sxy)-(sx*sy))/d:0;
+  const b=(sy-m*sx)/n;
+  return {m,b,n,predicted:m*n+b};
+}
+
+/* Least-squares regression of y on an arbitrary x (quality vs duration),
+   returning the line plus the Pearson correlation r. */
+function linRegXY(xs, ys){
+  const n=xs.length; let sx=0,sy=0,sxy=0,sxx=0,syy=0;
+  for(let i=0;i<n;i++){sx+=xs[i];sy+=ys[i];sxy+=xs[i]*ys[i];sxx+=xs[i]*xs[i];syy+=ys[i]*ys[i]}
+  const d=(n*sxx)-(sx*sx);
+  const m=d!==0?((n*sxy)-(sx*sy))/d:0;
+  const b=(sy-m*sx)/n;
+  const rd=Math.sqrt(d*((n*syy)-(sy*sy)));
+  const r=rd!==0?((n*sxy)-(sx*sy))/rd:0;
+  return {m,b,r,n};
+}
+
+/* ── INSIGHTS: forecast the next night over the whole history ── */
+const ML_METRICS = {
+  hours:  {label:'Duration', floor:0, ceil:16, dead:0.15, pick:h=>h.dur, fmt:v=>v.toFixed(2)+'h', yfmt:v=>v.toFixed(1)+'h'},
+  rating: {label:'Quality',  floor:1, ceil:5,  dead:0.10, pick:h=>h.q,   fmt:v=>v.toFixed(2),      yfmt:v=>v.toFixed(1)}
+};
+
+function rInsights(){
+  const cfg = ML_METRICS[document.getElementById('mlMetric').value];
+  const H = unifiedHistory();
+  const values = H.map(cfg.pick);
+  const durs = H.map(h=>h.dur), qs = H.map(h=>h.q);
+
+  document.getElementById('mlNights').textContent = H.length;
+  document.getElementById('mlAvgH').textContent = mean(durs).toFixed(2)+'h';
+  document.getElementById('mlAvgR').textContent = mean(qs).toFixed(2);
+
+  const reg = linReg(values);
+  const pred = Math.max(cfg.floor, Math.min(cfg.ceil, reg.predicted));
+
+  document.getElementById('mlPred').textContent = cfg.fmt(pred);
+  document.getElementById('mlPredL').textContent = 'Predicted next '+cfg.label.toLowerCase();
+  document.getElementById('mlForecastLabel').textContent = cfg.label+' — forecast (next night)';
+  document.getElementById('mlForecastVal').textContent = cfg.fmt(pred);
+  document.getElementById('mlSlope').textContent = reg.m.toFixed(5);
+  document.getElementById('mlIntercept').textContent = reg.b.toFixed(4);
+  document.getElementById('mlN').textContent = reg.n;
+
+  const delta30 = reg.m*30;
+  const badge = document.getElementById('mlTrendBadge');
+  const txt = document.getElementById('mlTrendText');
+  const low = cfg.label.toLowerCase();
+  let cls, msg;
+  if(delta30 > cfg.dead){
+    cls='ba-g'; badge.textContent='Trending up';
+    msg='Your '+low+' is trending upward, gaining roughly '+cfg.fmt(Math.abs(delta30))+' a month. The model expects about '+cfg.fmt(pred)+' next night.';
+  } else if(delta30 < -cfg.dead){
+    cls='ba-a'; badge.textContent='Trending down';
+    msg='Your '+low+' is drifting down by roughly '+cfg.fmt(Math.abs(delta30))+' a month. The model forecasts about '+cfg.fmt(pred)+' next night.';
+  } else {
+    cls='ba-b'; badge.textContent='Stable';
+    msg='Your '+low+' is holding steady around '+cfg.fmt(mean(values))+'. The model forecasts about '+cfg.fmt(pred)+' next night.';
+  }
+  badge.className='ba '+cls; txt.textContent=msg;
+
+  drawMLChart(H, values, reg, pred, cfg);
+}
+
+/* Size a canvas to its real on-screen pixels (× device pixel ratio) and
+   return a context scaled so all drawing math can stay in CSS pixels.
+   This keeps lines and text crisp at any window width instead of the
+   browser upscaling a small fixed buffer. */
+function hidpi(cv, cssH){
+  const dpr=window.devicePixelRatio||1;
+  const cssW=cv.clientWidth||(cv.parentElement&&cv.parentElement.clientWidth)||900;
+  cv.style.height=cssH+'px';
+  const bw=Math.round(cssW*dpr), bh=Math.round(cssH*dpr);
+  if(cv.width!==bw)cv.width=bw;
+  if(cv.height!==bh)cv.height=bh;
+  const ctx=cv.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,cssW,cssH);
+  return {ctx, LW:cssW, LH:cssH};
+}
+
+function drawMLChart(H, values, reg, pred, cfg){
+  const cv=document.getElementById('mlChart'); if(!cv) return;
+  const {ctx, LW, LH}=hidpi(cv, 320);
+  const padL=48,padR=18,padT=18,padB=30;
+  const W=LW-padL-padR, CH=LH-padT-padB, n=values.length;
+  let lo=Math.min(...values,pred), hi=Math.max(...values,pred);
+  const buf=(hi-lo)*0.12||1; lo-=buf; hi+=buf; lo=Math.max(lo,cfg.floor-buf*0.5);
+  const gX=i=>padL+(i/n)*W, gY=v=>padT+(1-(v-lo)/(hi-lo))*CH;
+
+  ctx.strokeStyle='rgba(255,255,255,.06)'; ctx.lineWidth=1; ctx.fillStyle='#74748a';
+  ctx.font='11px DM Sans,sans-serif'; ctx.textAlign='right';
+  for(let g=0;g<=4;g++){const v=lo+(hi-lo)*(g/4),y=gY(v);ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(LW-padR,y);ctx.stroke();ctx.fillText(cfg.yfmt(v),padL-6,y+4)}
+
+  ctx.textAlign='center'; ctx.fillStyle='#44445a'; ctx.font='10px DM Sans,sans-serif';
+  const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; let last=-1;
+  H.forEach((h,i)=>{const mo=parseInt(h.dt.slice(5,7),10)-1;if(mo!==last){last=mo;ctx.fillText(MON[mo],gX(i),LH-10)}});
+
+  ctx.fillStyle='rgba(74,108,247,.5)';
+  for(let i=0;i<n;i++){ctx.beginPath();ctx.arc(gX(i),gY(values[i]),2,0,Math.PI*2);ctx.fill()}
+
+  ctx.strokeStyle='#34d399'; ctx.lineWidth=2.5; ctx.beginPath();
+  ctx.moveTo(gX(0),gY(reg.b)); ctx.lineTo(gX(n),gY(reg.m*n+reg.b)); ctx.stroke();
+
+  const fx=gX(n),fy=gY(pred);
+  ctx.strokeStyle='rgba(251,191,36,.5)'; ctx.setLineDash([4,4]); ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(fx,fy);ctx.lineTo(fx,LH-padB);ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle='#fbbf24'; ctx.beginPath();ctx.arc(fx,fy,6,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#15151e'; ctx.lineWidth=2; ctx.beginPath();ctx.arc(fx,fy,6,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle='#fbbf24'; ctx.font='bold 10px DM Sans,sans-serif'; ctx.textAlign='center';
+  ctx.fillText('Next',fx,fy-12);
+}
+
+/* Mini live demo shown on the login screen: the real linear-regression
+   forecast run over the bundled 6-month dataset (no account needed). */
+function drawLoginPreview(){
+  const cv=document.getElementById('lpChart'); if(!cv) return;
+  const qs=EXTERNAL_HISTORY.map(r=>+r[2]);
+  const n=qs.length; if(!n) return;
+  const reg=linReg(qs);
+  const {ctx, LW, LH}=hidpi(cv, 118);
+  const padL=6,padR=12,padT=8,padB=8;
+  const W=LW-padL-padR, CH=LH-padT-padB, ymin=1, ymax=5;
+  const gX=i=>padL+(i/n)*W, gY=v=>padT+(1-(v-ymin)/(ymax-ymin))*CH;
+
+  ctx.strokeStyle='rgba(52,211,153,.22)'; ctx.setLineDash([4,4]); ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(padL,gY(5)); ctx.lineTo(LW-padR,gY(5)); ctx.stroke(); ctx.setLineDash([]);
+
+  ctx.fillStyle='rgba(74,108,247,.32)';
+  for(let i=0;i<n;i++){ctx.beginPath();ctx.arc(gX(i),gY(qs[i]),1.3,0,Math.PI*2);ctx.fill()}
+
+  const y0=Math.max(1,Math.min(5,reg.b)), yN=Math.max(1,Math.min(5,reg.m*(n-1)+reg.b));
+  ctx.strokeStyle='#34d399'; ctx.lineWidth=2.5; ctx.beginPath();
+  ctx.moveTo(gX(0),gY(y0)); ctx.lineTo(gX(n-1),gY(yN)); ctx.stroke();
+
+  const pred=Math.max(1,Math.min(5,reg.predicted)); const fx=gX(n),fy=gY(pred);
+  ctx.fillStyle='#fbbf24'; ctx.beginPath();ctx.arc(fx,fy,3.5,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#15151e'; ctx.lineWidth=1.5; ctx.beginPath();ctx.arc(fx,fy,3.5,0,Math.PI*2);ctx.stroke();
+
+  const b=document.getElementById('lpBadge');
+  if(b){const pm=reg.m*30; b.textContent=pm>0.05?'Trending up':pm<-0.05?'Trending down':'Steady'; b.className='ba '+(pm>0.05?'ba-g':pm<-0.05?'ba-a':'ba-b')}
+}
+
+/* ── DASHBOARD: how sleep duration relates to quality, with guidance ── */
+function renderDashChart(){
+  const H = unifiedHistory();
+  const qs = H.map(h=>h.q);
+  const n = qs.length;
+  if(!n){return}
+  const reg = linReg(qs);                       // quality vs night index
+  const ma  = movingAvg(qs, 7);
+  const startQ = Math.max(1, Math.min(5, reg.b));
+  const nowQ   = Math.max(1, Math.min(5, reg.m*(n-1)+reg.b));
+  const pred   = Math.max(1, Math.min(5, reg.predicted));
+  const perMonth = reg.m*30;
+
+  const badge = document.getElementById('dqStrength');
+  const head  = document.getElementById('dqHeadline');
+  if(perMonth > 0.05){
+    badge.textContent='Improving'; badge.className='ba ba-g';
+    head.textContent='Your sleep quality is improving';
+  } else if(perMonth < -0.05){
+    badge.textContent='Slipping'; badge.className='ba ba-a';
+    head.textContent='Your sleep quality is trending down';
+  } else {
+    badge.textContent='Steady'; badge.className='ba ba-b';
+    head.textContent='Your sleep quality is holding steady';
+  }
+
+  document.getElementById('dqNow').textContent =
+    'Across '+n+' nights the trend line has moved from about '+startQ.toFixed(1)+' to '+nowQ.toFixed(1)+' out of 5.';
+
+  const path = document.getElementById('dqPath');
+  const rate = Math.abs(perMonth).toFixed(2);
+  path.innerHTML = perMonth>0.05
+    ? '<div class="gs">You are gaining roughly '+rate+' quality points a month. Next night forecast: about '+pred.toFixed(1)+'.</div>'
+    : perMonth<-0.05
+      ? '<div class="gs">You are losing roughly '+rate+' points a month. Next night forecast: about '+pred.toFixed(1)+'.</div>'
+      : '<div class="gs">Your nights are steady around '+nowQ.toFixed(1)+'. Next night forecast: about '+pred.toFixed(1)+'.</div>';
+
+  const ideal = document.getElementById('dqIdeal');
+  const gap = 5 - nowQ;
+  ideal.style.display='block';
+  if(gap <= 0.15){
+    ideal.textContent='You are at the top of the scale. Focus on keeping this routine consistent.';
+  } else if(perMonth > 0.05){
+    const weeks = Math.max(1, Math.ceil((gap/perMonth)*4.345));
+    ideal.textContent='Room to improve: about '+gap.toFixed(1)+' to reach great sleep (quality 5) — roughly '+weeks+' weeks away at your current pace.';
+  } else {
+    ideal.textContent='Room to improve: about '+gap.toFixed(1)+' to reach great sleep (quality 5). Longer, more regular nights will help close the gap.';
+  }
+
+  drawQualityTrend(H, qs, ma, reg, pred);
+}
+
+/* GitHub-style contribution grid. Every night is a square; the closer that
+   night's duration is to the ideal (8h), the more saturated the blue. */
+function renderHeatmap(){
+  const wrap=document.getElementById('hmWrap'); if(!wrap) return;
+  const H=unifiedHistory();
+  const m={};
+  H.forEach(h=>{ if(m[h.dt]==null || h.dur>m[h.dt]) m[h.dt]=h.dur; });   // longest sleep per day
+  const dates=Object.keys(m).sort();
+  const stat=document.getElementById('hmStat');
+  if(!dates.length){ wrap.innerHTML='<div class="gv">No nights logged yet.</div>'; if(stat)stat.textContent=''; return }
+
+  const IDEAL=8;
+  const fmt=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const parse=s=>{const p=s.split('-').map(Number);return new Date(p[0],p[1]-1,p[2])};
+  const start=parse(dates[0]);
+  let end=parse(dates[dates.length-1]);
+  const today=new Date(); today.setHours(0,0,0,0);
+  if(end<today) end=today;
+  const cur=new Date(start); cur.setDate(cur.getDate()-cur.getDay());          // back to Sunday
+
+  const COL=['rgba(255,255,255,.05)','rgba(74,108,247,.22)','rgba(74,108,247,.45)','rgba(74,108,247,.72)','#5b7cff'];
+  const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const cells=[], months=[]; let lastMo=-1, logged=0, near=0;
+
+  while(cur<=end){
+    if(cur.getDay()===0){ const mo=cur.getMonth(); months.push(mo!==lastMo?MON[mo]:''); lastMo=mo; }
+    const ds=fmt(cur), dur=m[ds];
+    let lvl=0, title=ds+' · no entry';
+    if(dur!=null){
+      logged++;
+      const dev=Math.abs(dur-IDEAL);
+      lvl = dev<=0.5?4 : dev<=1?3 : dev<=2?2 : 1;
+      if(dev<=0.75) near++;
+      title=ds+' · '+dur.toFixed(1)+'h';
+    }
+    cells.push('<div title="'+title+'" style="width:12px;height:12px;border-radius:3px;background:'+COL[lvl]+';border:1px solid rgba(255,255,255,.05)"></div>');
+    cur.setDate(cur.getDate()+1);
+  }
+
+  const dayLabels=['','Mon','','Wed','','Fri',''];
+  const dayCol=dayLabels.map(l=>'<div style="height:12px;font-size:9px;line-height:12px;color:var(--tx3);text-align:right;padding-right:2px">'+l+'</div>').join('');
+  const monthRow=months.map(l=>'<div style="width:12px;font-size:9px;color:var(--tx3);white-space:nowrap;overflow:visible">'+l+'</div>').join('');
+
+  wrap.innerHTML=
+    '<div style="display:flex;gap:6px;align-items:flex-start">'+
+      '<div style="display:grid;grid-template-rows:repeat(7,12px);gap:3px;margin-top:16px">'+dayCol+'</div>'+
+      '<div style="overflow-x:auto;padding-bottom:4px">'+
+        '<div style="display:grid;grid-auto-flow:column;grid-auto-columns:12px;gap:3px;height:14px;margin-bottom:2px">'+monthRow+'</div>'+
+        '<div style="display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,12px);gap:3px">'+cells.join('')+'</div>'+
+      '</div>'+
+    '</div>';
+
+  if(stat) stat.textContent = logged+' nights logged · '+near+' near your ideal '+IDEAL+'h';
+}
+
+/* Trailing w-night moving average, used to show the real trajectory
+   beneath the straight regression line. */
+function movingAvg(a, w){
+  const out=[];
+  for(let i=0;i<a.length;i++){let s=0,c=0;for(let j=Math.max(0,i-w+1);j<=i;j++){s+=a[j];c++}out.push(s/c)}
+  return out;
+}
+
+/* Quality over time: faint nightly points, a smoothed average, the
+   straight linear-regression trend, a forecast node, and a goal band
+   up to quality 5 that shows how much room is left to improve. */
+function drawQualityTrend(H, qs, ma, reg, pred){
+  const cv=document.getElementById('dqChart'); if(!cv) return;
+  const {ctx, LW, LH}=hidpi(cv, 300);
+  const padL=40,padR=26,padT=18,padB=28;
+  const W=LW-padL-padR, CH=LH-padT-padB;
+  const n=qs.length, ymin=1, ymax=5;
+  const gX=i=>padL+(i/n)*W;                       // index n = forecast slot
+  const gY=v=>padT+(1-(v-ymin)/(ymax-ymin))*CH;
+  const y0=Math.max(1,Math.min(5,reg.b));
+  const yN=Math.max(1,Math.min(5,reg.m*(n-1)+reg.b));
+
+  // Room-to-improve band: between the trend line and quality 5.
+  ctx.fillStyle='rgba(52,211,153,.07)';
+  ctx.beginPath();
+  ctx.moveTo(gX(0),gY(y0)); ctx.lineTo(gX(n-1),gY(yN));
+  ctx.lineTo(gX(n-1),gY(5)); ctx.lineTo(gX(0),gY(5)); ctx.closePath(); ctx.fill();
+
+  // Quality gridlines Q1..Q5
+  ctx.strokeStyle='rgba(255,255,255,.06)'; ctx.lineWidth=1; ctx.fillStyle='#74748a';
+  ctx.font='11px DM Sans,sans-serif'; ctx.textAlign='right';
+  for(let q=1;q<=5;q++){const y=gY(q);ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(LW-padR,y);ctx.stroke();ctx.fillText('Q'+q,padL-6,y+4)}
+
+  // Month labels along the x-axis
+  ctx.textAlign='center'; ctx.fillStyle='#44445a'; ctx.font='10px DM Sans,sans-serif';
+  const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; let last=-1;
+  H.forEach((h,i)=>{const mo=parseInt(String(h.dt).slice(5,7),10)-1;if(mo!==last&&mo>=0){last=mo;ctx.fillText(MON[mo],gX(i),LH-8)}});
+
+  // Goal line at quality 5
+  ctx.strokeStyle='rgba(52,211,153,.45)'; ctx.setLineDash([6,5]); ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(padL,gY(5)); ctx.lineTo(LW-padR,gY(5)); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle='#34d399'; ctx.font='bold 10px DM Sans,sans-serif'; ctx.textAlign='left';
+  ctx.fillText('Goal · 5', padL+4, gY(5)+13);
+
+  // Faint nightly points
+  ctx.fillStyle='rgba(74,108,247,.28)';
+  for(let i=0;i<n;i++){ctx.beginPath();ctx.arc(gX(i),gY(qs[i]),1.8,0,Math.PI*2);ctx.fill()}
+
+  // 7-night moving average (muted blue)
+  ctx.strokeStyle='rgba(124,200,227,.7)'; ctx.lineWidth=1.6; ctx.beginPath();
+  ma.forEach((v,i)=>{const x=gX(i),y=gY(v);i?ctx.lineTo(x,y):ctx.moveTo(x,y)}); ctx.stroke();
+
+  // Straight linear-regression trend (bold green)
+  ctx.strokeStyle='#34d399'; ctx.lineWidth=3; ctx.beginPath();
+  ctx.moveTo(gX(0),gY(y0)); ctx.lineTo(gX(n-1),gY(yN)); ctx.stroke();
+
+  // Forecast node (amber) one night ahead
+  const fx=gX(n),fy=gY(pred);
+  ctx.strokeStyle='rgba(251,191,36,.55)'; ctx.setLineDash([4,4]); ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(gX(n-1),gY(yN));ctx.lineTo(fx,fy);ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle='#fbbf24'; ctx.beginPath();ctx.arc(fx,fy,5.5,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#15151e'; ctx.lineWidth=2; ctx.beginPath();ctx.arc(fx,fy,5.5,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle='#fbbf24'; ctx.font='bold 10px DM Sans,sans-serif'; ctx.textAlign='center';
+  ctx.fillText('Next', fx, fy-11);
+}
+
+/* ═══ STARTUP ═══ */
+seed();
+migrate();
+let _rzT;
+window.addEventListener('resize',()=>{clearTimeout(_rzT);_rzT=setTimeout(()=>{
+  const lg=document.getElementById('page-login');
+  if(lg&&lg.classList.contains('a')){drawLoginPreview();return}
+  if(!cu)return;
+  const dv=document.getElementById('sec-dashboard'), iv=document.getElementById('sec-insights');
+  if(dv&&dv.style.display!=='none')renderDashChart();
+  if(iv&&iv.style.display!=='none')rInsights();
+},150)});
+setTimeout(()=>{document.getElementById('splash').classList.add('h');clrSes();showPage('page-login');drawLoginPreview()},800);
+</script>
+</body>
+</html>
